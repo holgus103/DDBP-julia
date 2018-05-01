@@ -1,4 +1,5 @@
 module Parser
+export read_file, process_line!
 
 const input_count = 208
 
@@ -8,7 +9,23 @@ const input_count = 208
 
     function read_file(path::String, lines_count::Int, shuffle = false, no_trump = true, trump = true, no_trump_test = true, trump_test = true, split = 0.66)
         # deal dictionary
-        deals = Dict()
+        deals = Dict{Int, Array{Array{Float32}}}(
+            0 => [],
+            1 => [],
+            2 => [],
+            3 => [],
+            4 => [],
+            5 => [],
+            6 => [],
+            7 => [],
+            8 => [],
+            9 => [],
+            10 => [],
+            11 => [],
+            12 => [],
+            13 => []
+
+        )
 
         train_end = (lines_count * split) |> floor
         # test_outputs_set = []
@@ -36,7 +53,7 @@ const input_count = 208
         close(file)
     end
 
-    function process_line!(line::String, deals::Dict{Int, Array{Float32, 2}}, no_trump::Bool, trump::Bool)
+    function process_line!(line::String, deals::Dict{Int, Array{Array{Float32}}}, no_trump::Bool, trump::Bool)
         # dictionary to get results
         dict = Dict{Char, Int}('0' => 0, 
                     '1' => 1, 
@@ -53,18 +70,23 @@ const input_count = 208
                     'C' => 12, 
                     'D' => 13,
                     )
-        t = split(input, ':');
+        t = split(line, ':');
         vals = split(t[1], ' ');
         # preallocate array
         b = no_trump ? 0 : 1
-        e = trump ? 4 : 0
+        e = trump ? 5 : 1
         # process results
-
+        # print("UWAGA")
+        # println(t[2])
+        # println(b)
+        # println(e)
+        # print(t[2][((b*4) + 1):e*4])
+        # println("---")
         res = map(x-> get(dict, x, 0), collect(t[2][((b*4) + 1):e*4])) 
         # process hands
         count = 1;
         hands = [process_hand(vals[1]), process_hand(vals[2]), process_hand(vals[3]), process_hand(vals[4])]
-        for suit in in b:e
+        for suit in b:e
             for vist in (0,2)
                 tmp_hands = copy(hands);
                 if(suit > 1)
@@ -74,15 +96,19 @@ const input_count = 208
                         tmp_hands[i][13*(suit - 1)+1:suit*13] = spades
                     end
                 end
-                current = vcat(tmp_hands[(4-vist)+1:(len(deals))],tmp_hands[1:(4-vist)]);
+                current = vcat(tmp_hands[(4-vist)+1:4],tmp_hands[1:(4-vist)]);
                 sample = collect(Iterators.flatten(current))
-                push!(dict[res[1]], sample);
+                # println(count)
+                # println(res)
+                # println(res[count])
+                push!(deals[res[count]], sample);
+                count+=1
             end
         end
 
     end
 
-    function process_hand(hand::String)
+    function process_hand(hand)
         dict = Dict{Char,Int}(
             'A' => 0,
             'K' => 1,
@@ -101,14 +127,17 @@ const input_count = 208
         )
 
         colors = split(hand, '.');
+        # print(colors)
         hand = Array{Float32}(54);
         for i in 1:4
             color = colors[i]
             for c in collect(color)
+                # print(c)
                 # get corresponding array index
                 n = get(dict, c, 0)
+                # print(n)
                 # shift by color
-                index = (i-1) + n
+                index = (i-1) + n + 1
                 # mark card's presence
                 hand[index] = 1.0
             end
